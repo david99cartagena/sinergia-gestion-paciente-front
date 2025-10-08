@@ -100,9 +100,9 @@ function loadPacientes(page = 1) {
           <tr>
             <td>${p.id}</td>
             <td>${p.nombre1}</td>
-            <td>${p.nombre2}</td>
+            <td>${p.nombre2 || ""}</td>
             <td>${p.apellido1}</td>
-            <td>${p.apellido2}</td>
+            <td>${p.apellido2 || ""}</td>
             <td>${p.numero_documento}</td>
             <td>${p.correo}</td>
             <td>
