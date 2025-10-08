@@ -100,7 +100,9 @@ function loadPacientes(page = 1) {
           <tr>
             <td>${p.id}</td>
             <td>${p.nombre1}</td>
+            <td>${p.nombre2}</td>
             <td>${p.apellido1}</td>
+            <td>${p.apellido2}</td>
             <td>${p.numero_documento}</td>
             <td>${p.correo}</td>
             <td>
@@ -151,7 +153,9 @@ async function savePaciente(e) {
   submitBtn.disabled = true;
 
   const nombre1 = form.nombre1.value.trim();
+  const nombre2 = form.nombre2.value.trim();
   const apellido1 = form.apellido1.value.trim();
+  const apellido2 = form.apellido2.value.trim();
   const numero_documento = form.numero_documento.value.trim();
   const correo = form.correo.value.trim();
   const tipo_documento_id = form.tipo_documento_id.value;
@@ -245,6 +249,8 @@ async function savePaciente(e) {
   formData.append("genero_id", genero_id);
   formData.append("departamento_id", departamento_id);
   formData.append("municipio_id", municipio_id);
+  if (nombre2) formData.append("nombre2", nombre2);
+  if (apellido2) formData.append("apellido2", apellido2);
   if (fotoInput && fotoInput.files.length > 0)
     formData.append("foto", fotoInput.files[0]);
 
@@ -285,6 +291,8 @@ function editPaciente(id) {
       document.getElementById("pacienteId").value = p.id;
       document.getElementById("nombre1").value = p.nombre1;
       document.getElementById("apellido1").value = p.apellido1;
+      document.getElementById("nombre2").value = p.nombre2;
+      document.getElementById("apellido2").value = p.apellido2;
       document.getElementById("numero_documento").value = p.numero_documento;
       document.getElementById("correo").value = p.correo;
       document.getElementById("tipo_documento_id").value = p.tipo_documento_id;

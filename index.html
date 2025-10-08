@@ -22,14 +22,22 @@
                     <input type="hidden" id="pacienteId" name="pacienteId" value="" />
                     <div class="row g-3">
                         <div class="col-md-4">
-                            <label for="nombre1" class="form-label">Nombre 1</label>
+                            <label for="nombre1" class="form-label">Primer Nombre</label>
                             <input type="text" class="form-control" id="nombre1" name="nombre1" required
                                 minlength="2" />
                         </div>
                         <div class="col-md-4">
-                            <label for="apellido1" class="form-label">Apellido 1</label>
+                            <label for="nombre2" class="form-label">Segundo Nombre</label>
+                            <input type="text" class="form-control" id="nombre2" name="nombre2" minlength="2" />
+                        </div>
+                        <div class="col-md-4">
+                            <label for="apellido1" class="form-label">Primer Apellido</label>
                             <input type="text" class="form-control" id="apellido1" name="apellido1" required
                                 minlength="2" />
+                        </div>
+                        <div class="col-md-4">
+                            <label for="apellido2" class="form-label">Segundo Apellido</label>
+                            <input type="text" class="form-control" id="apellido2" name="apellido2" minlength="2" />
                         </div>
                         <div class="col-md-4">
                             <label for="numero_documento" class="form-label">Documento</label>
@@ -96,8 +104,10 @@
                 <thead>
                     <tr>
                         <th>ID</th>
-                        <th>Nombre</th>
-                        <th>Apellido</th>
+                        <th>Primer Nombre</th>
+                        <th>Segundo Nombre</th>
+                        <th>Primer Apellido</th>
+                        <th>Segundo Apellido</th>
                         <th>Documento</th>
                         <th>Correo</th>
                         <th>Foto</th>
