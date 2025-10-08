@@ -4,10 +4,26 @@ const token = localStorage.getItem("jwtToken"); // JWT guardado después de logi
 // Configuración axios
 axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
 
+// Interceptor global de errores
+axios.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      Swal.fire({
+        icon: "error",
+        title: "Sesión expirada",
+        text: "Por favor inicia sesión de nuevo.",
+      });
+      localStorage.removeItem("jwtToken");
+      location.reload();
+    }
+    return Promise.reject(error);
+  }
+);
+
 document.addEventListener("DOMContentLoaded", () => {
   const token = localStorage.getItem("jwtToken");
   if (!token) {
-    // Mostrar modal de login si no hay token
     const loginModal = new bootstrap.Modal(
       document.getElementById("loginModal"),
       { backdrop: "static", keyboard: false }
@@ -19,16 +35,24 @@ document.addEventListener("DOMContentLoaded", () => {
     loadSelects();
   }
 
-  const loginForm = document.getElementById("loginForm");
-  loginForm.addEventListener("submit", login);
-
-  const form = document.getElementById("pacienteForm");
-  form.addEventListener("submit", savePaciente);
-
+  document.getElementById("loginForm").addEventListener("submit", login);
+  document
+    .getElementById("pacienteForm")
+    .addEventListener("submit", savePaciente);
   document.getElementById("resetForm").addEventListener("click", resetForm);
+
+  const searchInput = document.getElementById("searchPaciente");
+  let debounceTimeout;
+  searchInput.addEventListener("input", () => {
+    clearTimeout(debounceTimeout);
+    debounceTimeout = setTimeout(() => loadPacientes(1), 300);
+  });
 });
 
-// Función de login
+let currentPage = 1;
+const perPage = 5;
+
+// ----- LOGIN -----
 function login(e) {
   e.preventDefault();
   const email = document.getElementById("loginEmail").value;
@@ -41,12 +65,7 @@ function login(e) {
       const token = res.data.token;
       localStorage.setItem("jwtToken", token);
       axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-
-      // Cerrar modal
-      const loginModalEl = document.getElementById("loginModal");
-      const loginModal = bootstrap.Modal.getInstance(loginModalEl);
-      loginModal.hide();
-
+      bootstrap.Modal.getInstance(document.getElementById("loginModal")).hide();
       loadPacientes();
       loadSelects();
     })
@@ -165,14 +184,28 @@ function savePaciente(e) {
 
   request
     .then((res) => {
-      alert(res.data.message);
+      // alert(res.data.message);
+      Swal.fire({
+        icon: "success",
+        title: res.data?.msg,
+        timer: 4000,
+        showConfirmButton: false,
+      });
       resetForm();
       loadPacientes();
     })
-    .catch((err) => alert(err.response.data.msg || err.message));
+    // .catch((err) => alert(err.response.data.msg || err.message));
+    .catch((err) => {
+      const errors = err.response?.data?.errors;
+      const msg = errors
+        ? Object.values(errors).flat().join("\n")
+        : err.response?.data?.msg || "Error interno";
+      Swal.fire({ icon: "error", title: "Oops!", text: msg });
+    })
+    .finally(() => (submitBtn.disabled = false));
 }
 
-// Editar paciente
+// ----- EDITAR PACIENTE -----
 function editPaciente(id) {
   axios
     .get(`${apiURL}/pacientes/${id}`)
@@ -185,48 +218,163 @@ function editPaciente(id) {
       document.getElementById("correo").value = p.correo;
       document.getElementById("tipo_documento_id").value = p.tipo_documento_id;
       document.getElementById("genero_id").value = p.genero_id;
+      document.getElementById("departamento_id").value = p.departamento_id;
 
-      // Primero seleccionar departamento
-      const departamentoSelect = document.getElementById("departamento_id");
-      departamentoSelect.value = p.departamento_id;
-
-      // Cargar municipios del departamento seleccionado
       const municipioSelect = document.getElementById("municipio_id");
       municipioSelect.innerHTML = '<option value="">Cargando...</option>';
       axios
         .get(`${apiURL}/municipios/${p.departamento_id}`)
         .then((res) => {
           municipioSelect.innerHTML = '<option value="">Seleccione</option>';
-          res.data.data.forEach((m) => {
-            municipioSelect.innerHTML += `<option value="${m.id}">${m.nombre}</option>`;
-          });
-
-          // Finalmente seleccionar el municipio del paciente
+          res.data.data.forEach(
+            (m) =>
+              (municipioSelect.innerHTML += `<option value="${m.id}">${m.nombre}</option>`)
+          );
           municipioSelect.value = p.municipio_id;
         })
         .catch((err) => {
-          console.error("Error al cargar municipios:", err);
+          // console.error("Error al cargar municipios:", err);
           municipioSelect.innerHTML =
             '<option value="">Error al cargar municipios</option>';
+          Swal.fire({
+            icon: "error",
+            title: "Error",
+            text: "No se pudieron cargar los municipios.",
+          });
         });
     })
-    .catch((err) => alert(err.response?.data?.msg || err.message));
+    // .catch((err) => alert(err.response?.data?.msg || err.message));
+    .catch((err) =>
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: err.response?.data?.msg || "No se pudo cargar el paciente",
+      })
+    );
 }
 
-// Eliminar paciente
+// ----- ELIMINAR PACIENTE -----
 function deletePaciente(id) {
-  if (!confirm("¿Deseas eliminar este paciente?")) return;
-  axios
-    .delete(`${apiURL}/pacientes/${id}`)
-    .then((res) => {
-      alert(res.data.msg);
-      loadPacientes();
-    })
-    .catch((err) => alert(err.response.data.msg || err.message));
+  Swal.fire({
+    title: "¿Deseas eliminar este paciente?",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonColor: "#d33",
+    cancelButtonColor: "#3085d6",
+    confirmButtonText: "Sí, eliminar",
+    cancelButtonText: "Cancelar",
+  }).then((result) => {
+    if (result.isConfirmed) {
+      axios
+        .delete(`${apiURL}/pacientes/${id}`)
+        .then((res) => {
+          Swal.fire({
+            icon: "success",
+            title: "Eliminado",
+            text: res.data?.msg,
+            timer: 2000,
+            showConfirmButton: false,
+          });
+          loadPacientes();
+        })
+        .catch((err) =>
+          Swal.fire({
+            icon: "error",
+            title: "Error",
+            text: err.response?.data?.msg || err.message,
+          })
+        );
+    }
+  });
 }
 
-// Reset formulario
+// ----- RESET FORMULARIO -----
 function resetForm() {
   document.getElementById("pacienteForm").reset();
   document.getElementById("pacienteId").value = "";
+}
+
+// ----- CARGAR SELECTS -----
+function loadSelects() {
+  axios
+    .get(`${apiURL}/tipo_documentos`)
+    .then((res) => {
+      const select = document.getElementById("tipo_documento_id");
+      select.innerHTML = '<option value="">Seleccione</option>';
+      res.data.data.forEach(
+        (td) =>
+          (select.innerHTML += `<option value="${td.id}">${td.nombre}</option>`)
+      );
+    })
+    .catch((err) =>
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "No se pudieron cargar los tipos de documentos",
+      })
+    );
+
+  axios
+    .get(`${apiURL}/generos`)
+    .then((res) => {
+      const select = document.getElementById("genero_id");
+      select.innerHTML = '<option value="">Seleccione</option>';
+      res.data.data.forEach(
+        (g) =>
+          (select.innerHTML += `<option value="${g.id}">${g.nombre}</option>`)
+      );
+    })
+    .catch((err) =>
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "No se pudieron cargar los géneros",
+      })
+    );
+
+  axios
+    .get(`${apiURL}/departamentos`)
+    .then((res) => {
+      const select = document.getElementById("departamento_id");
+      select.innerHTML = '<option value="">Seleccione</option>';
+      res.data.data.forEach(
+        (d) =>
+          (select.innerHTML += `<option value="${d.id}">${d.nombre}</option>`)
+      );
+
+      select.addEventListener("change", (e) => {
+        const deptoId = e.target.value;
+        const selectMunicipio = document.getElementById("municipio_id");
+        selectMunicipio.innerHTML = '<option value="">Cargando...</option>';
+        if (!deptoId)
+          return (selectMunicipio.innerHTML =
+            '<option value="">Seleccione un departamento</option>');
+
+        axios
+          .get(`${apiURL}/municipios/${deptoId}`)
+          .then((res) => {
+            selectMunicipio.innerHTML = '<option value="">Seleccione</option>';
+            res.data.data.forEach(
+              (m) =>
+                (selectMunicipio.innerHTML += `<option value="${m.id}">${m.nombre}</option>`)
+            );
+          })
+          .catch((err) => {
+            selectMunicipio.innerHTML =
+              '<option value="">Error al cargar municipios</option>';
+            Swal.fire({
+              icon: "error",
+              title: "Error",
+              text: "No se pudieron cargar los municipios",
+            });
+          });
+      });
+    })
+    .catch((err) =>
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "No se pudieron cargar los departamentos",
+      })
+    );
 }
