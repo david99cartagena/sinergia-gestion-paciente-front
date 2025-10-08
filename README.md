@@ -1,0 +1,1 @@
+# sinergia-gestion-paciente-front
